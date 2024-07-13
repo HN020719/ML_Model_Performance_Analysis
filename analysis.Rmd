@@ -1,0 +1,628 @@
+---
+title: "HW9 Week10"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(ggplot2)
+library(e1071)
+library(tidyverse)
+library(caret)
+library(MASS)
+library(ISLR)
+library(tree)
+```
+
+```{r}
+info <- read_csv("spam-info.txt")
+test <- read.csv("spam-test.txt", header = FALSE)
+train <- read.csv("spam-train.txt", header = FALSE)
+names <- read_csv("spam-names.txt")
+```
+## Question 1
+```{r}
+#preprocessing
+train1 <- as.data.frame(scale(train[1:57]))
+test1 <- as.data.frame(scale(test[1:57]))
+train_final <- cbind(train1,train[58])
+test_final <- cbind(test1,test[58])
+```
+#(a)
+```{r}
+#train
+corr_train1 <- cor(train_final[1:57], train_final[58])
+check <- ifelse(abs(corr_train1) > 0.3, corr_train1, 0)
+get <- check[check != 0, ]
+get
+new_train1 <- subset(train_final, select = c(V5, V7, V21, V23, V53, V58))
+pairwise_train1 <- pairs(new_train1, pch = 19, cex = 0.5)
+pairwise_train1
+```
+```{r}
+corr_test1 <- cor(test_final[1:57], test_final[58])
+check <- ifelse(abs(corr_test1) > 0.3, corr_test1, 0)
+get <- check[check != 0, ]
+get
+new_test1 <- subset(test_final, select = c(V7, V21, V23, V53, V56, V58))
+pairwise_test1 <- pairs(new_test1, pch = 19, cex = 0.5)
+pairwise_test1
+```
+#(b)
+```{r}
+# train
+model1_train <- glm(V58~ .,  data = train_final, family = binomial)
+pred <- predict(model1_train, newdata = train_final, type = "response")
+
+sum <- summary(model1_train)
+sum
+prob <- data.frame(sum$coefficients[,4])
+prob <- prob %>% filter(sum.coefficients...4. < 0.01)
+prob
+```
+
+
+```{r}
+# Evaluate the model on the train data
+accuracy <- mean((pred > 0.5) == train_final$V58)
+accuracy
+
+# Calculate the classification error
+error <- 1 - accuracy
+error
+```
+V5, V7, V8, V11, V16, V17, V20, V21, V23, V25, V27, V42, V45, V46, V52, V53, V56, V57 appear to be statistically significant.
+
+Those has a sum.coefficients...4. less than 0.01 are statistically significant.
+```{r}
+# test
+model1_test <- glm(V58~ ., data = test_final, family = binomial)
+pred <- predict(model1_test, newdata = test_final, type = "response")
+
+# Evaluate the model on the test data
+accuracy <- mean((pred > 0.5) == test_final$V58)
+accuracy
+
+# Calculate the classification error
+error <- 1 - accuracy
+error
+```
+#(c)
+```{r}
+#linear
+lda.fit=lda(V58 ~ ., data=train_final)
+```
+
+```{r}
+#train
+lda.pred=predict(lda.fit, train_final)
+lda.class=lda.pred$class
+true_value=train_final$V58
+table(lda.class,true_value)
+
+test_error_LDA=mean(lda.class!=true_value)
+test_error_LDA
+```
+```{r}
+#test
+lda.pred=predict(lda.fit, test_final)
+lda.class=lda.pred$class
+true_value=test_final$V58
+table(lda.class,true_value)
+
+test_error_LDA=mean(lda.class!=true_value)
+test_error_LDA
+```
+
+```{r}
+#quadratic
+qda.fit=qda(V58 ~ ., data=train_final)
+```
+```{r}
+qda.pred=predict(qda.fit, train_final)
+qda.class=qda.pred$class
+true_value=train_final$V58
+table(qda.class,true_value)
+
+test_error_LDA=mean(qda.class!=true_value)
+test_error_LDA
+```
+```{r}
+#test 
+qda.pred=predict(qda.fit, test_final)
+qda.class=qda.pred$class
+true_value=test_final$V58
+table(qda.class,true_value)
+test_error_QDA=mean(qda.class!=true_value)
+test_error_QDA
+```
+#(d)
+```{r}
+#linear
+svm.model <- svm(V58~ ., data = train_final, cost = 1, kernel ="linear", type="C-classification")
+summary(svm.model)
+```
+
+```{r}
+#train
+#obtain my confusion matrix:
+svm.pred=predict(svm.model, train_final)
+tab <- table(svm.pred, train_final$V58)
+#And the classification error as:
+mean(svm.pred != train_final$V58)
+```
+```{r}
+#test
+#obtain my confusion matrix:
+svm.pred=predict(svm.model, test_final)
+tab <- table(svm.pred, test_final$V58)
+#And the classification error as:
+mean(svm.pred != test_final$V58)
+```
+```{r}
+#non linear
+svm.nmodel <- svm(V58~ ., data = train_final, cost = 1, kernel ="radial", type="C-classification")
+summary(svm.nmodel)
+```
+```{r}
+#train
+#obtain my confusion matrix:
+svm.pred=predict(svm.nmodel, train_final)
+tab <- table(svm.pred, train_final$V58)
+#And the classification error as:
+mean(svm.pred != train_final$V58)
+```
+```{r}
+#test
+#obtain my confusion matrix:
+svm.pred=predict(svm.nmodel, test_final)
+tab <- table(svm.pred, test_final$V58)
+#And the classification error as:
+mean(svm.pred != test_final$V58)
+```
+#(e)
+```{r}
+tree.boston = tree(V58~., data = train_final)
+tree.boston.summary = summary(tree.boston)
+tree.boston.summary
+```
+```{r}
+cv.boston = cv.tree(tree.boston, K=10)
+cv.size = cv.boston$size[which.min(cv.boston$dev)]
+#prune
+prune.boston = prune.tree(tree.boston, best=cv.size)
+plot(tree.boston)
+text(tree.boston, pretty=0)
+plot(prune.boston)
+text(prune.boston, pretty = 0)
+```
+```{r}
+#train
+#Calculating the test errors
+y.test = train_final$V58
+yhat.single = predict(tree.boston, newdata = train_final)
+mse.single = mean((yhat.single - y.test)^2)
+yhat.prune = predict(prune.boston, newdata = train_final)
+mse.prune = mean((yhat.prune - y.test)^22)
+sprintf("MSE for a single tree: %0.2f.", mse.single)
+## [1] "MSE for a single tree: 0.07."
+sprintf("MSE for a pruned tree: %0.2f.", mse.prune)
+## [1]  "MSE for a pruned tree: 0.01."
+```
+```{r}
+#test
+#Calculating the test errors
+y.test = test_final$V58
+yhat.single = predict(tree.boston, newdata = test_final)
+mse.single = mean((yhat.single - y.test)^2)
+yhat.prune = predict(prune.boston, newdata = test_final)
+mse.prune = mean((yhat.prune - y.test)^22)
+sprintf("MSE for a single tree: %0.2f.", mse.single)
+## [1] "MSE for a single tree: 0.09."
+sprintf("MSE for a pruned tree: %0.2f.", mse.prune)
+## [1]  "MSE for a pruned tree: 0.02."
+```
+
+
+## Question 2
+```{r}
+#preprocessing
+train2 <- log(train[1:57] + 1)
+test2 <- log(test[1:57] + 1)
+train_final2 <- cbind(train2,train[58])
+test_final2 <- cbind(test2,test[58])
+```
+#(a)
+```{r}
+#train
+corr_train2 <- cor(train_final2[1:57], train_final2[58])
+check2 <- ifelse(abs(corr_train2) > 0.4, corr_train2, 0)
+get2 <- check2[check2 != 0, ]
+get2
+new_train2 <- subset(train_final2, select = c(V7, V21, V52, V53, V55, V56, V57))
+pairwise_train2 <- pairs(new_train2, pch = 19, cex = 0.5)
+pairwise_train2
+```
+
+```{r}
+corr_test2 <- cor(test_final2[1:57], test_final2[58])
+check2 <- ifelse(abs(corr_test2) > 0.4, corr_test2, 0)
+get2 <- check2[check2 != 0, ]
+get2
+new_test2 <- subset(test_final2, select = c(V7, V16, V21, V53, V55, V56, V57))
+pairwise_test2 <- pairs(new_test2, pch = 19, cex = 0.5)
+pairwise_test2
+```
+#(b)
+```{r}
+model2 <- glm(V58~ .,  data = train_final2, family = binomial)
+sum2 <- summary(model2)
+sum2
+prob2 <- data.frame(sum2$coefficients[,4])
+prob2 <- prob2 %>% filter(sum2.coefficients...4. < 0.01)
+prob2
+```
+```{r}
+## train
+pred2 <- predict(model2, newdata = train_final2, type = "response")
+
+# Evaluate the model on the test data
+accuracy2 <- mean((pred2 > 0.5) == train_final2$V58)
+accuracy2
+
+# Calculate the classification error
+error2 <- 1 - accuracy2
+error2
+```
+V5 V7 V8 V11	V16	V17 V20	V21	V23 V24 V25 V27 V37	V42	V43 V45	V46	V52 V53 appear to be statistically significant.
+Those has a sum.coefficients...4. less than 0.01 are statistically significant.
+VW50 
+```{r}
+# test
+pred2 <- predict(model2, newdata = test_final2, type = "response")
+
+# Evaluate the model on the test data
+accuracy2 <- mean((pred2 > 0.5) == test_final2$V58)
+accuracy2
+
+# Calculate the classification error
+error2 <- 1 - accuracy2
+error2
+```
+#(c)
+```{r}
+#linear
+lda2.fit=lda(V58 ~ ., data=train_final2)
+```
+
+```{r}
+#train
+lda2.pred=predict(lda2.fit, train_final2)
+lda2.class=lda2.pred$class
+true_value=train_final2$V58
+table(lda2.class,true_value)
+
+test_error_LDA=mean(lda2.class!=true_value)
+test_error_LDA
+```
+```{r}
+#test
+lda2.pred=predict(lda2.fit, test_final2)
+lda2.class=lda2.pred$class
+true_value=test_final2$V58
+table(lda2.class,true_value)
+
+test_error_LDA=mean(lda2.class!=true_value)
+test_error_LDA
+```
+```{r}
+#quadratic
+qda2.fit=qda(V58 ~ ., data=train_final2)
+```
+```{r}
+#train
+qda2.pred=predict(qda2.fit, train_final2)
+qda2.class=qda2.pred$class
+true_value=train_final2$V58
+table(qda2.class,true_value)
+test_error_QDA=mean(qda2.class!=true_value)
+test_error_QDA
+```
+```{r}
+#test
+qda2.pred=predict(qda2.fit, test_final2)
+qda2.class=qda2.pred$class
+true_value=test_final2$V58
+table(qda2.class,true_value)
+test_error_QDA=mean(qda2.class!=true_value)
+test_error_QDA
+```
+#(d)
+```{r}
+#linear
+svm.model <- svm(V58 ~ ., data = train_final2, cost = 1, kernel ="linear", type="C-classification")
+summary(svm.model)
+```
+```{r}
+#train
+#obtain my confusion matrix:
+svm.pred=predict(svm.model, train_final2)
+tab <- table(svm.pred, train_final2$V58)
+#And the classification error as:
+mean(svm.pred != train_final2$V58)
+```
+```{r}
+#test
+#obtain my confusion matrix:
+svm.pred=predict(svm.model, test_final2)
+tab <- table(svm.pred, test_final2$V58)
+#And the classification error as:
+mean(svm.pred != test_final2$V58)
+```
+```{r}
+#non linear
+svm.nmodel <- svm(V58 ~ ., data = train_final2, cost = 1, kernel ="radial", type="C-classification")
+summary(svm.nmodel)
+```
+```{r}
+#test
+#obtain my confusion matrix:
+svm.pred=predict(svm.nmodel, train_final2)
+tab <- table(svm.pred, train_final2$V58)
+#And the classification error as:
+mean(svm.pred != train_final2$V58)
+```
+```{r}
+#test
+#obtain my confusion matrix:
+svm.pred=predict(svm.nmodel, test_final2)
+tab <- table(svm.pred, test_final2$V58)
+#And the classification error as:
+mean(svm.pred != test_final2$V58)
+```
+
+#(e)
+```{r}
+tree.boston = tree(V58 ~ ., data = train_final2)
+tree.boston.summary = summary(tree.boston)
+tree.boston.summary
+```
+```{r}
+cv.boston = cv.tree(tree.boston, K=10)
+cv.size = cv.boston$size[which.min(cv.boston$dev)]
+#prune
+prune.boston = prune.tree(tree.boston, best=cv.size)
+plot(tree.boston)
+text(tree.boston, pretty=0)
+plot(prune.boston)
+text(prune.boston, pretty = 0)
+```
+```{r}
+#train
+y.test = train_final2$V58
+yhat.single = predict(tree.boston, newdata = train_final2)
+mse.single = mean((yhat.single - y.test)^2)
+yhat.prune = predict(prune.boston, newdata = train_final2)
+mse.prune = mean((yhat.prune - y.test)^22)
+sprintf("MSE for a single tree: %0.2f.", mse.single)
+## [1]  "MSE for a single tree: 0.07."
+sprintf("MSE for a pruned tree: %0.2f.", mse.prune)
+## [1]  "MSE for a pruned tree: 0.01."
+```
+```{r}
+#test
+y.test = test_final2$V58
+yhat.single = predict(tree.boston, newdata = test_final2)
+mse.single = mean((yhat.single - y.test)^2)
+yhat.prune = predict(prune.boston, newdata = test_final2)
+mse.prune = mean((yhat.prune - y.test)^22)
+sprintf("MSE for a single tree: %0.2f.", mse.single)
+## [1]  "MSE for a single tree: 0.08."
+sprintf("MSE for a pruned tree: %0.2f.", mse.prune)
+## [1]  "MSE for a pruned tree: 0.01.
+```
+## Question 3
+```{r}
+#preprocessing
+train3 <- ifelse(train[1:57] >0, 1, 0)
+test3 <- ifelse(test[1:57] >0, 1, 0)
+train_final3 <- cbind(train3,train[58])
+test_final3 <- cbind(test3,test[58])
+```
+#(a)
+```{r}
+#train
+corr_train3 <- cor(train_final3[1:57], train_final3[58])
+check3 <- ifelse(abs(corr_train3) > 0.4, corr_train3, 0)
+get3 <- check3[check3 != 0, ]
+get3
+new_train3 <- subset(train_final3, select = c(V5, V7, V16, V21, V23, V24, V25, V52, V53))
+pairwise_train3 <- pairs(new_train3, pch = 19, cex = 1)
+pairwise_train3
+```
+
+```{r}
+#test
+corr_test3 <- cor(test_final3[1:57], test_final3[58])
+check3 <- ifelse(abs(corr_test3) > 0.4, corr_test3, 0)
+get3 <- check3[check3 != 0, ]
+get3
+new_test3 <- subset(test_final3, select = c(V5, V7, V16, V21, V23, V24, V25, V52, V53))
+pairwise_test3 <- pairs(new_test3, pch = 19, cex = 1)
+pairwise_test3
+```
+#(b)
+```{r}
+# train
+model3 <- glm(V58~ .,  data = train_final3, family = binomial)
+sum3 <- summary(model3)
+sum2
+prob3 <- data.frame(sum2$coefficients[,4])
+prob3 <- prob3 %>% filter(sum2.coefficients...4. < 0.01)
+prob3
+```
+```{r}
+# train
+pred3 <- predict(model3, newdata = train_final3, type = "response")
+
+accuracy3 <- mean((pred3 > 0.5) == train_final3$V58)
+accuracy3
+
+# Calculate the classification error
+error3 <- 1 - accuracy3
+error3
+```
+V5 V7 V8 V11	V16	V17 V20	V21	V23 V24 V25 V27 V37	V42	V43 V45	V46	V52 V53 V57 appear to be statistically significant.
+Those has a sum.coefficients...4. less than 0.01 are statistically significant.
+VW50 
+```{r}
+# test
+pred3 <- predict(model3, newdata = test_final3, type = "response")
+
+# Evaluate the model on the test data
+accuracy3 <- mean((pred3 > 0.5) == test_final3$V58)
+accuracy3
+
+# Calculate the classification error
+error3 <- 1 - accuracy3
+error3
+```
+#(c)
+#(d)
+```{r}
+#linear
+svm.model <- svm(V58 ~ ., data = train_final3, cost = 1, kernel ="linear", type="C-classification")
+summary(svm.model)
+```
+```{r}
+#train
+#obtain my confusion matrix:
+svm.pred=predict(svm.model, train_final3)
+tab <- table(svm.pred, train_final3$V58)
+#And the classification error as:
+mean(svm.pred != train_final3$V58)
+```
+```{r}
+#test
+#obtain my confusion matrix:
+svm.pred=predict(svm.model, test_final3)
+tab <- table(svm.pred, test_final3$V58)
+#And the classification error as:
+mean(svm.pred != test_final3$V58)
+```
+```{r}
+#non linear
+svm.nmodel <- svm(V58 ~ ., data = train_final3, cost = 1, kernel ="radial", type="C-classification")
+summary(svm.nmodel)
+```
+```{r}
+#train
+#obtain my confusion matrix:
+svm.pred=predict(svm.nmodel, train_final3)
+tab <- table(svm.pred, train_final3$V58)
+#And the classification error as:
+mean(svm.pred != train_final3$V58)
+```
+
+```{r}
+#test
+#obtain my confusion matrix:
+svm.pred=predict(svm.nmodel, test_final3)
+tab <- table(svm.pred, test_final3$V58)
+#And the classification error as:
+mean(svm.pred != test_final3$V58)
+```
+
+#(e)
+```{r}
+tree.boston = tree(V58 ~ ., data = train_final3)
+tree.boston.summary = summary(tree.boston)
+tree.boston.summary
+```
+```{r}
+cv.boston = cv.tree(tree.boston, K=10)
+cv.size = cv.boston$size[which.min(cv.boston$dev)]
+#prune
+prune.boston = prune.tree(tree.boston, best=cv.size)
+plot(tree.boston)
+text(tree.boston, pretty=0)
+plot(prune.boston)
+text(prune.boston, pretty = 0)
+```
+```{r}
+#train
+y.test = train_final3$V58
+yhat.single = predict(tree.boston, newdata = train_final3)
+mse.single = mean((yhat.single - y.test)^2)
+yhat.prune = predict(prune.boston, newdata = train_final3)
+mse.prune = mean((yhat.prune - y.test)^22)
+sprintf("MSE for a single tree: %0.2f.", mse.single)
+## [1]  "MSE for a single tree: 0.09"
+sprintf("MSE for a pruned tree: %0.2f.", mse.prune)
+## [1]  "MSE for a pruned tree: 0.01"
+```
+```{r}
+#Calculating the test errors
+y.test = test_final3$V58
+yhat.single = predict(tree.boston, newdata = test_final3)
+mse.single = mean((yhat.single - y.test)^2)
+yhat.prune = predict(prune.boston, newdata = test_final3)
+mse.prune = mean((yhat.prune - y.test)^22)
+sprintf("MSE for a single tree: %0.2f.", mse.single)
+## [1]  "MSE for a single tree: 0.09."
+sprintf("MSE for a pruned tree: %0.2f.", mse.prune)
+## [1]  "MSE for a pruned tree: 0.01."
+```
+## Report classification errors using different methods and different preprocessed data in a table, and comment on the different performances
+```{r}
+mat1.data <- c(0.0717, 0.0521, 0.1017, 0.1030, 0.1787, 0.1747, 0.0649, 0.0717, 0.0515, 0.0645, 0.0100, 0.0200, 0.0577, 0.0567, 0.0603, 0.0652, 0.1588, 0.1571, 0.0541, 0.0515, 0.0389, 0.0450, 0.0100, 0.0100, 0.0571, 0.0808, NA, NA, NA, NA, 0.0603, 0.0743, 0.0616, 0.0756, 0.0100, 0.0100)
+mat1 <- matrix(mat1.data, nrow=3, ncol=12,byrow=TRUE)
+colnames(mat1) <- c('LRTrain', 'LRTest', 'LDTrain', 'LDTest', 'QDTrain', 'QDTest', 'LSVMTrain', 'LSVMTest', 'NLSVMTrain', 'NLSVMTest', 'TBTrain', 'TBTest')
+rownames(mat1) <- c('STD', 'Log', 'Discret')
+table <- as.table(mat1)
+table
+```
+For all three different preprocessed data, tree-based classifiers perform the best for both training and test datasets. For standardized data and the log-transformed data, quadratic discriminant analysis methods perform the worst for both training and test datasets. For Discretized data, logistic regression model has the worst performance for the test data, while nonlinear support vector machine classifiers has the worst performance for the training data. 
+
+## design a classifier with test error rate as small as possible
+```{r}
+#Transform the features using Log(xij + 1) first 
+train_model <- log(train[1:57] + 1)
+test_model <- log(test[1:57] + 1)
+train_model <- cbind(train_model,train[58])
+test_model <- cbind(test_model,test[58])
+
+#Apply tree-based classifiers to the data
+tree.boston = tree(V58 ~ ., data = train_model)
+tree.boston.summary = summary(tree.boston)
+cv.boston = cv.tree(tree.boston, K=10)
+cv.size = cv.boston$size[which.min(cv.boston$dev)]
+
+
+#prune
+prune.boston = prune.tree(tree.boston, best=cv.size)
+summary(prune.boston)
+```
+```{r}
+plot(tree.boston)
+text(tree.boston, pretty=0)
+```
+```{r}
+#Calculating the test errors
+y.test = test_model$V58
+yhat.single = predict(tree.boston, newdata = test_model)
+mse.single = mean((yhat.single - y.test)^2)
+yhat.prune = predict(prune.boston, newdata = test_model)
+mse.prune = mean((yhat.prune - y.test)^22)
+sprintf("MSE for a single tree: %0.2f.", mse.single)
+## [1]  "MSE for a single tree: 0.08."
+sprintf("MSE for a pruned tree: %0.2f.", mse.prune)
+## [1]  "MSE for a pruned tree: 0.01."
+```
+
+We recommended preprocessed the data by transforming the features using Log(xij + 1) first, then apply a decision tree model. 
+Based on the pruning result, we found that the variables were actually used in tree construction are "V52" "V7"  "V24" "V16" "V23" "V25" "V57" "V53" "V46", and there are only  11 nodes will achieve the best performace with accuracy 99%. 
