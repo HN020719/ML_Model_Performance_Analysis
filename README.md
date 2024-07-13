@@ -23,7 +23,7 @@ This project involves the analysis and modeling of a spam information dataset us
 - Analyzed the significance of the features based on the trained models.
 
 ### Question 3: LDA & QDA
-- Trained LDA and QDA models on standardized and log-transformed data.
+- Trained LDA and QDA models on the standardized and log-transformed data.
 - Calculated training and testing error rates for each model and transformation.
 - Compared the performance of LDA and QDA models.
 
