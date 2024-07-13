@@ -6,7 +6,10 @@ This project involves the analysis and modeling of a spam information dataset us
 ## Files
 - `analysis.Rmd`: RMarkdown file containing the complete code for data preprocessing, visualization, and model training.
 - `analysis.pdf`: PDF version of the complete analysis.
-- `spam-info.txt`: Raw data file used for analysis.
+- `spam-info.txt`: Raw data file containing spam information.
+- `spam-test.txt`: Raw data file for testing the models.
+- `spam-train.txt`: Raw data file for training the models.
+- `spam-names.txt`: Raw data file containing names/labels for the features.
 
 ## Questions and Solutions
 
