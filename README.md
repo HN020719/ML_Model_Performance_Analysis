@@ -1,7 +1,7 @@
-# ML_Model_Performance_Analysis
+# ML_Model_Performance_Analysis_On_Spam_Information
 
 ## Overview
-This project involves the analysis and modeling of a dataset using various machine learning techniques. The dataset is preprocessed and visualized, followed by training and evaluating models such as logistic regression, LDA, QDA, SVM, and tree-based methods. 
+This project involves the analysis and modeling of a spam information dataset using various machine-learning techniques. The dataset is preprocessed and visualized, followed by training and evaluating models such as logistic regression, LDA, QDA, SVM, and tree-based methods. 
 
 ## Files
 - `analysis.Rmd`: RMarkdown file containing the complete code for data preprocessing, visualization, and model training.
